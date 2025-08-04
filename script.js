@@ -9,24 +9,37 @@ const monthNames = [
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Storage functions
+// Storage functions with enhanced error handling and logging
 function saveActivities() {
     try {
-        localStorage.setItem('calendarActivities', JSON.stringify(activities));
+        const dataToSave = JSON.stringify(activities);
+        localStorage.setItem('calendarActivities', dataToSave);
+        console.log('Activities saved successfully:', Object.keys(activities).length, 'dates');
+        return true;
     } catch (error) {
         console.error('Failed to save activities:', error);
+        alert('Failed to save activities: ' + error.message);
+        return false;
     }
 }
 
 function loadActivities() {
     try {
         const stored = localStorage.getItem('calendarActivities');
+        console.log('Raw stored data:', stored);
+
         if (stored) {
-            activities = JSON.parse(stored);
+            const parsedData = JSON.parse(stored);
+            activities = parsedData;
+            console.log('Activities loaded successfully:', Object.keys(activities).length, 'dates');
+        } else {
+            console.log('No stored activities found, starting with empty object');
+            activities = {};
         }
     } catch (error) {
         console.error('Failed to load activities:', error);
         activities = {}; // Reset to empty if loading fails
+        alert('Failed to load saved activities. Starting fresh.');
     }
 }
 
@@ -296,11 +309,51 @@ function autoResize(textarea) {
     textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
 }
 
-// Initialize calendar
-document.addEventListener('DOMContentLoaded', function () {
+// Initialize calendar - multiple approaches to ensure it runs
+function initializeCalendar() {
+    console.log('Initializing calendar...');
+
     // Load activities from localStorage first
     loadActivities();
+    console.log('Loaded activities:', activities);
 
     // Then render the calendar
     renderCalendar();
+
+    console.log('Calendar initialized');
+}
+
+// Try multiple initialization methods to ensure it works
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeCalendar);
+} else {
+    // DOM is already loaded
+    initializeCalendar();
+}
+
+// Backup initialization in case DOMContentLoaded doesn't fire
+window.addEventListener('load', function () {
+    // Only initialize if calendar is empty (hasn't been initialized yet)
+    const calendar = document.getElementById('calendar');
+    if (calendar && calendar.innerHTML === '') {
+        console.log('Backup initialization triggered');
+        initializeCalendar();
+    }
 });
+
+// Test localStorage functionality
+function testLocalStorage() {
+    try {
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+        console.log('localStorage is working');
+        return true;
+    } catch (e) {
+        console.error('localStorage is not available:', e);
+        alert('localStorage is not available. Data will not persist between sessions.');
+        return false;
+    }
+}
+
+// Test localStorage on page load
+testLocalStorage();
