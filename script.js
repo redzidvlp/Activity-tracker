@@ -9,6 +9,27 @@ const monthNames = [
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// Storage functions
+function saveActivities() {
+    try {
+        localStorage.setItem('calendarActivities', JSON.stringify(activities));
+    } catch (error) {
+        console.error('Failed to save activities:', error);
+    }
+}
+
+function loadActivities() {
+    try {
+        const stored = localStorage.getItem('calendarActivities');
+        if (stored) {
+            activities = JSON.parse(stored);
+        }
+    } catch (error) {
+        console.error('Failed to load activities:', error);
+        activities = {}; // Reset to empty if loading fails
+    }
+}
+
 function formatDate(date) {
     // Use proper local date formatting to avoid timezone issues
     const year = date.getFullYear();
@@ -161,6 +182,9 @@ function addActivity() {
 
     activities[selectedDate].push(activity);
 
+    // Save to localStorage
+    saveActivities();
+
     // Clear form
     document.getElementById('activityDesc').value = '';
     document.getElementById('hours').value = '';
@@ -179,8 +203,73 @@ function deleteActivity(index) {
         delete activities[selectedDate];
     }
 
+    // Save to localStorage
+    saveActivities();
+
     renderCalendar();
     renderActivities();
+}
+
+// Export/Import functions for backup
+function exportActivities() {
+    const dataStr = JSON.stringify(activities, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'calendar-activities.json';
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function importActivities(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+
+            // Validate the data structure
+            if (typeof importedData === 'object' && importedData !== null) {
+                // Merge with existing activities or replace
+                if (confirm('Do you want to merge with existing activities? Click Cancel to replace all activities.')) {
+                    // Merge mode
+                    Object.keys(importedData).forEach(date => {
+                        if (!activities[date]) {
+                            activities[date] = [];
+                        }
+                        activities[date] = activities[date].concat(importedData[date]);
+                    });
+                } else {
+                    // Replace mode
+                    activities = importedData;
+                }
+
+                saveActivities();
+                renderCalendar();
+                renderActivities();
+                alert('Activities imported successfully!');
+            } else {
+                alert('Invalid file format');
+            }
+        } catch (error) {
+            alert('Error importing file: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Clear all data function
+function clearAllActivities() {
+    if (confirm('Are you sure you want to delete ALL activities? This cannot be undone.')) {
+        activities = {};
+        saveActivities();
+        renderCalendar();
+        renderActivities();
+        alert('All activities have been cleared.');
+    }
 }
 
 // Navigation event listeners
@@ -208,4 +297,10 @@ function autoResize(textarea) {
 }
 
 // Initialize calendar
-renderCalendar();
+document.addEventListener('DOMContentLoaded', function () {
+    // Load activities from localStorage first
+    loadActivities();
+
+    // Then render the calendar
+    renderCalendar();
+});
